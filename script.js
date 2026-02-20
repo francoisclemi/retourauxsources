@@ -102,8 +102,8 @@ fetch(sheetURL)
         .attr("y", -squareSize/2)
         .attr("width", squareSize)
         .attr("height", squareSize)
-        .attr("rx", 20)
-        .attr("ry", 20)
+        .attr("rx", 80)
+        .attr("ry", 80)
         .attr("fill", "#ccc");
 
       // image cropée sur le haut
