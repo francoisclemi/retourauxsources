@@ -2,7 +2,7 @@
 const sheetURL = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base"; // ← remplace TON_ID_SHEET
 
 const width = 900;
-const height = 600;
+const height = 900;
 const centerX = width / 2;
 const centerY = height / 2;
 const radius = 150;       // plus proche du centre
