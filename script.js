@@ -6,6 +6,9 @@ const centerX = width/2;
 const centerY = height/2;
 const radius = 200; // distance des satellites autour du centre
 
+const circleRadius = 40; // rayon du cercle
+const imageSize = 28;    // taille de l'image à l'intérieur
+
 // Créer tooltip
 const tooltip = d3.select("body")
   .append("div")
@@ -50,29 +53,33 @@ fetch(sheetURL)
       if(item.matiere.toLowerCase() === "français") color = "#e74c3c";
       if(item.matiere.toLowerCase() === "histoire") color = "#f1c40f";
 
-     // cercle pour la ressource
+   // cercle pour la ressource
 svg.append("circle")
   .attr("cx", x)
   .attr("cy", y)
-  .attr("r", 25)
+  .attr("r", circleRadius)
   .attr("fill", color)
   .style("cursor","pointer")
   .on("mouseover", (event) => {
     tooltip.transition().duration(200).style("opacity", 0.9);
-    tooltip.html(`<strong>${item.titre}</strong><br>Matière: ${item.matiere}<br>Notion: ${item.notion}`)
+    tooltip.html(`
+      <strong>${item.titre}</strong><br>
+      Matière: ${item.matiere}<br>
+      Notion: ${item.notion}
+    `)
       .style("left", (event.pageX + 10) + "px")
       .style("top", (event.pageY - 20) + "px");
   })
   .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0))
   .on("click", () => window.open(item.url,"_blank"));
 
-// ajouter l'image
+// image centrée dans le cercle
 svg.append("image")
   .attr("xlink:href", item.vignette)
-  .attr("x", x - 15) // centrer l'image sur le cercle
-  .attr("y", y - 15)
-  .attr("width", 30)
-  .attr("height", 30)
+  .attr("x", x - imageSize/2) // centre l'image
+  .attr("y", y - imageSize/2)
+  .attr("width", imageSize)
+  .attr("height", imageSize)
   .style("pointer-events","none"); // laisse le cercle cliquable
 
       // texte (optionnel : affiché sous le cercle)
