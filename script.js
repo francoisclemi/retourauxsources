@@ -1,8 +1,6 @@
 // script.js
 const sheetURL = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base"; // ← remplace TON_ID_SHEET
 
-// script.js
-const sheetURL = "https://opensheet.elk.sh/TON_ID_SHEET/Feuille1"; // ← remplace TON_ID_SHEET
 const width = 900;
 const height = 600;
 const centerX = width / 2;
