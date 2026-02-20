@@ -1,21 +1,49 @@
 // script.js
 const sheetURL = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base"; // ← remplace TON_ID_SHEET
 
+// script.js
+const sheetURL = "https://opensheet.elk.sh/TON_ID_SHEET/Feuille1"; // ← remplace TON_ID_SHEET
 const width = 900;
 const height = 600;
 const centerX = width / 2;
 const centerY = height / 2;
-const radius = 250;       // distance des carrés autour du centre
+const radius = 150;       // plus proche du centre
 const squareSize = 120;   // taille du carré
 const imageHeight = 60;   // hauteur de la vignette dans le carré
-const circleRadius = 50;  // rayon des cercles matière/notion (même que SOURCE)
-const circleOffset = 10;  // espace entre carré et cercle
+const circleRadius = 50;  // taille des cercles matière/notion/SOURCE
+const circleOffset = 5;   // distance entre carré et cercles
 
 // Tooltip
 const tooltip = d3.select("body")
   .append("div")
   .attr("class", "tooltip")
   .style("opacity", 0);
+
+// Fonction pour texte multi-lignes
+function addMultilineText(g, text, x, y, width, lineHeight, fill, fontSize) {
+  const words = text.split(" ");
+  let lines = [], line = "";
+  words.forEach((word) => {
+    if ((line + " " + word).length > width / 6) {
+      lines.push(line);
+      line = word;
+    } else {
+      line += (line ? " " : "") + word;
+    }
+  });
+  lines.push(line);
+
+  lines.forEach((l,i) => {
+    g.append("text")
+      .attr("x", x)
+      .attr("y", y + i*lineHeight)
+      .attr("text-anchor","middle")
+      .attr("dy","0.35em")
+      .attr("fill", fill)
+      .style("font-size", fontSize)
+      .text(l);
+  });
+}
 
 fetch(sheetURL)
   .then(res => res.json())
@@ -48,14 +76,11 @@ fetch(sheetURL)
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
 
-      // couleurs
-      let matColor = "#2ecc71"; // vert pour matière
-      let notionColor = "#f39c12"; // orange pour notion
-      if(item.matiere.toLowerCase() === "svt") matColor = "#2ecc71";
-      if(item.matiere.toLowerCase() === "français") matColor = "#e74c3c";
-      if(item.matiere.toLowerCase() === "histoire") matColor = "#f1c40f";
+      // couleurs fixes
+      const matColor = "#2ecc71"; // vert pour matière
+      const notionColor = "#f39c12"; // orange pour notion
 
-      // groupe pour le carré + titre + image
+      // Groupe carré + image + titre
       const g = svg.append("g")
         .attr("class","resource-group")
         .attr("transform", `translate(${x},${y})`)
@@ -83,7 +108,7 @@ fetch(sheetURL)
         .attr("ry", 20)
         .attr("fill", "#ccc");
 
-      // image cropée sur le haut du carré
+      // image cropée sur le haut
       g.append("image")
         .attr("xlink:href", item.vignette)
         .attr("x", -squareSize/2)
@@ -92,7 +117,7 @@ fetch(sheetURL)
         .attr("height", imageHeight)
         .attr("preserveAspectRatio","xMidYMid slice");
 
-      // titre sur la moitié basse
+      // titre sur moitié basse
       g.append("rect")
         .attr("x", -squareSize/2)
         .attr("y", 0)
@@ -100,29 +125,22 @@ fetch(sheetURL)
         .attr("height", squareSize/2)
         .attr("fill", "#aaa");
 
-      g.append("text")
-        .attr("x", 0)
-        .attr("y", squareSize/4)
-        .attr("text-anchor","middle")
-        .attr("dy","0.35em")
-        .attr("fill","#fff")
-        .style("font-size","12px")
-        .text(item.titre);
+      addMultilineText(g, item.titre, 0, squareSize/8, squareSize, 14, "#fff", "12px");
 
-      // calcul position cercles matière/notion selon angle
+      // Position cercles matière/notion selon angle
       let dxMat, dyMat, dxNot, dyNot;
       if(angle >= -Math.PI/4 && angle < Math.PI/4) { // droite
-          dxMat = squareSize/2 + circleOffset + circleRadius; dyMat = -squareSize/2; // haut droit
-          dxNot = squareSize/2 + circleOffset + circleRadius; dyNot = squareSize/2; // bas droit
+          dxMat = squareSize/2 + circleOffset + circleRadius; dyMat = -squareSize/2 - circleRadius; // haut droit
+          dxNot = squareSize/2 + circleOffset + circleRadius; dyNot = squareSize/2 + circleRadius; // bas droit
       } else if(angle >= Math.PI/4 && angle < 3*Math.PI/4) { // bas
-          dxMat = -squareSize/2; dyMat = squareSize/2 + circleOffset + circleRadius; // bas gauche
-          dxNot = squareSize/2; dyNot = squareSize/2 + circleOffset + circleRadius; // bas droit
+          dxMat = -squareSize/2 - circleRadius; dyMat = squareSize/2 + circleOffset + circleRadius; // bas gauche
+          dxNot = squareSize/2 + circleRadius; dyNot = squareSize/2 + circleOffset + circleRadius; // bas droit
       } else if(angle >= -3*Math.PI/4 && angle < -Math.PI/4) { // haut
-          dxMat = -squareSize/2; dyMat = -squareSize/2 - circleOffset - circleRadius; // haut gauche
-          dxNot = squareSize/2; dyNot = -squareSize/2 - circleOffset - circleRadius; // haut droit
+          dxMat = -squareSize/2 - circleRadius; dyMat = -squareSize/2 - circleOffset - circleRadius; // haut gauche
+          dxNot = squareSize/2 + circleRadius; dyNot = -squareSize/2 - circleOffset - circleRadius; // haut droit
       } else { // gauche
-          dxMat = -squareSize/2 - circleOffset - circleRadius; dyMat = -squareSize/2; // haut gauche
-          dxNot = -squareSize/2 - circleOffset - circleRadius; dyNot = squareSize/2; // bas gauche
+          dxMat = -squareSize/2 - circleOffset - circleRadius; dyMat = -squareSize/2 - circleRadius; // haut gauche
+          dxNot = -squareSize/2 - circleOffset - circleRadius; dyNot = squareSize/2 + circleRadius; // bas gauche
       }
 
       // cercle matière
@@ -132,14 +150,7 @@ fetch(sheetURL)
         .attr("r", circleRadius)
         .attr("fill", matColor);
 
-      svg.append("text")
-        .attr("x", x + dxMat)
-        .attr("y", y + dyMat)
-        .attr("text-anchor", "middle")
-        .attr("dy", "0.35em")
-        .attr("fill","#fff")
-        .style("font-size","14px")
-        .text(item.matiere);
+      addMultilineText(svg, item.matiere, x + dxMat, y + dyMat, circleRadius*2, 16, "#fff", "14px");
 
       // cercle notion
       svg.append("circle")
@@ -148,14 +159,7 @@ fetch(sheetURL)
         .attr("r", circleRadius)
         .attr("fill", notionColor);
 
-      svg.append("text")
-        .attr("x", x + dxNot)
-        .attr("y", y + dyNot)
-        .attr("text-anchor", "middle")
-        .attr("dy", "0.35em")
-        .attr("fill","#fff")
-        .style("font-size","14px")
-        .text(item.notion);
+      addMultilineText(svg, item.notion, x + dxNot, y + dyNot, circleRadius*2, 16, "#fff", "14px");
 
       // traits fins reliant carré aux cercles
       svg.append("line")
