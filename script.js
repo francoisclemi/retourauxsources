@@ -5,11 +5,11 @@ const width = 900;
 const height = 900;
 const centerX = width / 2;
 const centerY = height / 2;
-const radius = 150;       // plus proche du centre
-const squareSize = 120;   // taille du carré
-const imageHeight = 60;   // hauteur de la vignette dans le carré
-const circleRadius = 50;  // taille des cercles matière/notion/SOURCE
-const circleOffset = 5;   // distance entre carré et cercles
+const radius = 180;         // distance des carrés autour du centre
+const squareSize = 120;     // taille des carrés ressources
+const imageHeight = 60;     // hauteur de la vignette
+const circleRadius = 50;    // taille des cercles matière/notion/SOURCE
+const circleOffset = 5;     // distance entre carré et cercles
 
 // Tooltip
 const tooltip = d3.select("body")
@@ -75,8 +75,8 @@ fetch(sheetURL)
       const y = centerY + radius * Math.sin(angle);
 
       // couleurs fixes
-      const matColor = "#2ecc71"; // vert pour matière
-      const notionColor = "#f39c12"; // orange pour notion
+      const matColor = "#2ecc71"; // vert matière
+      const notionColor = "#f39c12"; // orange notion
 
       // Groupe carré + image + titre
       const g = svg.append("g")
@@ -96,14 +96,14 @@ fetch(sheetURL)
         })
         .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
 
-      // carré arrondi
+      // carré très arrondi
       g.append("rect")
         .attr("x", -squareSize/2)
         .attr("y", -squareSize/2)
         .attr("width", squareSize)
         .attr("height", squareSize)
-        .attr("rx", 80)
-        .attr("ry", 80)
+        .attr("rx", squareSize/2) // coins très arrondis
+        .attr("ry", squareSize/2)
         .attr("fill", "#ccc");
 
       // image cropée sur le haut
