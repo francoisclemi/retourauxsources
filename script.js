@@ -1,15 +1,13 @@
-const sheetURL = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base";
-
+// script.js
+const sheetURL = "https://opensheet.elk.sh/TON_ID_SHEET/Feuille1"; // ← remplace TON_ID_SHEET
 const width = 900;
 const height = 600;
-const centerX = width/2;
-const centerY = height/2;
-const radius = 200; // distance des satellites autour du centre
+const centerX = width / 2;
+const centerY = height / 2;
+const radius = 200;       // distance des satellites autour du centre
+const circleRadius = 60;  // rayon des cercles satellites
 
-const circleRadius = 40; // rayon du cercle
-const imageSize = 28;    // taille de l'image à l'intérieur
-
-// Créer tooltip
+// Créer le tooltip
 const tooltip = d3.select("body")
   .append("div")
   .attr("class", "tooltip")
@@ -18,13 +16,14 @@ const tooltip = d3.select("body")
 fetch(sheetURL)
   .then(res => res.json())
   .then(data => {
+
     // Trier par date décroissante et prendre les 5 dernières
-    const sorted = data.sort((a,b)=> new Date(b.date) - new Date(a.date));
-    const lastFive = sorted.slice(0,5);
+    const sorted = data.sort((a,b) => new Date(b.date) - new Date(a.date));
+    const lastFive = sorted.slice(0, 5);
 
     const svg = d3.select("#graph");
 
-    // Créer le nœud central
+    // Créer le nœud central "SOURCE"
     svg.append("circle")
       .attr("cx", centerX)
       .attr("cy", centerY)
@@ -37,12 +36,13 @@ fetch(sheetURL)
       .attr("text-anchor", "middle")
       .attr("dy", "0.35em")
       .attr("fill", "#fff")
+      .style("font-size", "16px")
       .text("SOURCE");
 
     // Créer les satellites
     const angleStep = 2 * Math.PI / lastFive.length;
 
-    lastFive.forEach((item,i) => {
+    lastFive.forEach((item, i) => {
       const angle = i * angleStep - Math.PI/2; // commencer en haut
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
@@ -53,42 +53,62 @@ fetch(sheetURL)
       if(item.matiere.toLowerCase() === "français") color = "#e74c3c";
       if(item.matiere.toLowerCase() === "histoire") color = "#f1c40f";
 
-   // cercle pour la ressource
-svg.append("circle")
-  .attr("cx", x)
-  .attr("cy", y)
-  .attr("r", circleRadius)
-  .attr("fill", color)
-  .style("cursor","pointer")
-  .on("mouseover", (event) => {
-    tooltip.transition().duration(200).style("opacity", 0.9);
-    tooltip.html(`
-      <strong>${item.titre}</strong><br>
-      Matière: ${item.matiere}<br>
-      Notion: ${item.notion}
-    `)
-      .style("left", (event.pageX + 10) + "px")
-      .style("top", (event.pageY - 20) + "px");
-  })
-  .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0))
-  .on("click", () => window.open(item.url,"_blank"));
+      // créer un clipPath unique pour l'image
+      svg.append("defs")
+        .append("clipPath")
+        .attr("id", "clip" + i)
+        .append("circle")
+        .attr("cx", x)
+        .attr("cy", y)
+        .attr("r", circleRadius);
 
-// image centrée dans le cercle
-svg.append("image")
-  .attr("xlink:href", item.vignette)
-  .attr("x", x - imageSize/2) // centre l'image
-  .attr("y", y - imageSize/2)
-  .attr("width", imageSize)
-  .attr("height", imageSize)
-  .style("pointer-events","none"); // laisse le cercle cliquable
+      // cercle coloré de fond
+      svg.append("circle")
+        .attr("cx", x)
+        .attr("cy", y)
+        .attr("r", circleRadius)
+        .attr("fill", color)
+        .style("cursor","pointer")
+        .on("mouseover", (event) => {
+          tooltip.transition().duration(200).style("opacity", 0.9);
+          tooltip.html(`
+            <strong>${item.titre}</strong><br>
+            Matière: ${item.matiere}<br>
+            Notion: ${item.notion}
+          `)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 20) + "px");
+        })
+        .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0))
+        .on("click", () => window.open(item.url,"_blank"));
 
-      // texte (optionnel : affiché sous le cercle)
+      // image centrée, crop circulaire
+      svg.append("image")
+        .attr("xlink:href", item.vignette)
+        .attr("x", x - circleRadius)
+        .attr("y", y - circleRadius)
+        .attr("width", circleRadius * 2)
+        .attr("height", circleRadius * 2)
+        .attr("clip-path", "url(#clip" + i + ")")
+        .style("pointer-events","none"); // clic sur le cercle
+
+      // titre sous le cercle
+      svg.append("rect")
+        .attr("x", x - circleRadius)
+        .attr("y", y + circleRadius + 5)
+        .attr("width", circleRadius * 2)
+        .attr("height", 20)
+        .attr("fill", color)
+        .attr("rx", 5)
+        .attr("ry", 5);
+
       svg.append("text")
         .attr("x", x)
-        .attr("y", y + 40)
+        .attr("y", y + circleRadius + 20)
         .attr("text-anchor", "middle")
-        .text(item.titre)
-        .style("font-size","11px");
+        .attr("fill", "#fff")
+        .style("font-size", "12px")
+        .text(item.titre);
     });
 
   })
