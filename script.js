@@ -50,21 +50,30 @@ fetch(sheetURL)
       if(item.matiere.toLowerCase() === "français") color = "#e74c3c";
       if(item.matiere.toLowerCase() === "histoire") color = "#f1c40f";
 
-      // cercle
-      svg.append("circle")
-        .attr("cx", x)
-        .attr("cy", y)
-        .attr("r", 25)
-        .attr("fill", color)
-        .style("cursor","pointer")
-        .on("mouseover", (event) => {
-          tooltip.transition().duration(200).style("opacity", 0.9);
-          tooltip.html(`<strong>${item.titre}</strong><br>Matière: ${item.matiere}<br>Notion: ${item.notion}`)
-            .style("left", (event.pageX + 10) + "px")
-            .style("top", (event.pageY - 20) + "px");
-        })
-        .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0))
-        .on("click", () => window.open(item.url,"_blank"));
+     // cercle pour la ressource
+svg.append("circle")
+  .attr("cx", x)
+  .attr("cy", y)
+  .attr("r", 25)
+  .attr("fill", color)
+  .style("cursor","pointer")
+  .on("mouseover", (event) => {
+    tooltip.transition().duration(200).style("opacity", 0.9);
+    tooltip.html(`<strong>${item.titre}</strong><br>Matière: ${item.matiere}<br>Notion: ${item.notion}`)
+      .style("left", (event.pageX + 10) + "px")
+      .style("top", (event.pageY - 20) + "px");
+  })
+  .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0))
+  .on("click", () => window.open(item.url,"_blank"));
+
+// ajouter l'image
+svg.append("image")
+  .attr("xlink:href", item.vignette)
+  .attr("x", x - 15) // centrer l'image sur le cercle
+  .attr("y", y - 15)
+  .attr("width", 30)
+  .attr("height", 30)
+  .style("pointer-events","none"); // laisse le cercle cliquable
 
       // texte (optionnel : affiché sous le cercle)
       svg.append("text")
