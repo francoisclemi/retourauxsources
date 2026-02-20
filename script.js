@@ -1,178 +1,197 @@
 // script.js
 const sheetURL = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base"; // ← remplace TON_ID_SHEET
 
+document.addEventListener("DOMContentLoaded", function () {
+
 const width = 900;
 const height = 900;
 const centerX = width / 2;
 const centerY = height / 2;
-const radius = 180;         // distance des carrés autour du centre
-const squareSize = 120;     // taille des carrés ressources
-const imageHeight = 60;     // hauteur de la vignette
-const circleRadius = 50;    // taille des cercles matière/notion/SOURCE
-const circleOffset = 5;     // distance entre carré et cercles
 
-// Tooltip
-const tooltip = d3.select("body")
-  .append("div")
-  .attr("class", "tooltip")
-  .style("opacity", 0);
+const sourceRadius = 90;
+const circleRadius = sourceRadius;
+const squareSize = 180;
+const distanceFromCenter = 170; // rapproché du centre
 
-// Fonction pour texte multi-lignes
-function addMultilineText(g, text, x, y, width, lineHeight, fill, fontSize) {
+const svg = d3.select("#visualisation")
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height);
+
+function addMultilineText(svg, text, x, y, maxWidth, lineHeight, fill, fontSize = "13px") {
   const words = text.split(" ");
-  let lines = [], line = "";
+  let line = "";
+  let lineNumber = 0;
+
+  const textElement = svg.append("text")
+    .attr("x", x)
+    .attr("y", y)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .attr("fill", fill)
+    .attr("font-size", fontSize)
+    .attr("font-weight", "bold");
+
   words.forEach((word) => {
-    if ((line + " " + word).length > width / 6) {
-      lines.push(line);
-      line = word;
+    const testLine = line + word + " ";
+    if (testLine.length > 18) {
+      textElement.append("tspan")
+        .attr("x", x)
+        .attr("dy", lineNumber === 0 ? 0 : lineHeight)
+        .text(line);
+      line = word + " ";
+      lineNumber++;
     } else {
-      line += (line ? " " : "") + word;
+      line = testLine;
     }
   });
-  lines.push(line);
 
-  lines.forEach((l,i) => {
-    g.append("text")
-      .attr("x", x)
-      .attr("y", y + i*lineHeight)
-      .attr("text-anchor","middle")
-      .attr("dy","0.35em")
-      .attr("fill", fill)
-      .style("font-size", fontSize)
-      .text(l);
-  });
+  textElement.append("tspan")
+    .attr("x", x)
+    .attr("dy", lineNumber === 0 ? 0 : lineHeight)
+    .text(line);
 }
 
-fetch(sheetURL)
-  .then(res => res.json())
+function addCircleWithText(x, y, text, color) {
+  svg.append("circle")
+    .attr("cx", x)
+    .attr("cy", y)
+    .attr("r", circleRadius)
+    .attr("fill", color);
+
+  addMultilineText(svg, text, x, y, circleRadius * 1.6, 14, "white");
+}
+
+fetch("data.json")
+  .then(response => response.json())
   .then(data => {
-    const sorted = data.sort((a,b) => new Date(b.date) - new Date(a.date));
-    const lastFive = sorted.slice(0,5);
 
-    const svg = d3.select("#graph");
+    // CERCLE SOURCE
+    addCircleWithText(centerX, centerY, "Source", "#1e88e5");
 
-    // Cercle central SOURCE
-    svg.append("circle")
-      .attr("cx", centerX)
-      .attr("cy", centerY)
-      .attr("r", circleRadius)
-      .attr("fill", "#3498db");
+    const lastFive = data.slice(-5);
 
-    svg.append("text")
-      .attr("x", centerX)
-      .attr("y", centerY)
-      .attr("text-anchor", "middle")
-      .attr("dy", "0.35em")
-      .attr("fill", "#fff")
-      .style("font-size", "16px")
-      .text("SOURCE");
+    lastFive.forEach((item, i) => {
 
-    const angleStep = 2 * Math.PI / lastFive.length;
+      const angle = (i / lastFive.length) * 2 * Math.PI - Math.PI / 2;
+      const x = centerX + distanceFromCenter * Math.cos(angle);
+      const y = centerY + distanceFromCenter * Math.sin(angle);
 
-    lastFive.forEach((item,i) => {
-      const angle = i * angleStep - Math.PI/2;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
+      // LIGNE vers centre
+      svg.append("line")
+        .attr("x1", centerX)
+        .attr("y1", centerY)
+        .attr("x2", x)
+        .attr("y2", y)
+        .attr("stroke", "#ccc")
+        .attr("stroke-width", 1);
 
-      // couleurs fixes
-      const matColor = "#2ecc71"; // vert matière
-      const notionColor = "#f39c12"; // orange notion
-
-      // Groupe carré + image + titre
-      const g = svg.append("g")
-        .attr("class","resource-group")
-        .attr("transform", `translate(${x},${y})`)
-        .style("cursor","pointer")
-        .on("click", () => window.open(item.url,"_blank"))
-        .on("mouseover", (event) => {
-          tooltip.transition().duration(200).style("opacity", 0.9);
-          tooltip.html(`
-            <strong>${item.titre}</strong><br>
-            Matière: ${item.matiere}<br>
-            Notion: ${item.notion}
-          `)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 20) + "px");
-        })
-        .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
-
-      // carré très arrondi
-      g.append("rect")
-        .attr("x", -squareSize/2)
-        .attr("y", -squareSize/2)
+      // === CLIP PATH ===
+      svg.append("defs")
+        .append("clipPath")
+        .attr("id", "clip-square-" + i)
+        .append("rect")
+        .attr("x", x - squareSize/2)
+        .attr("y", y - squareSize/2)
         .attr("width", squareSize)
         .attr("height", squareSize)
-        .attr("rx", squareSize/2) // coins très arrondis
-        .attr("ry", squareSize/2)
-        .attr("fill", "#ccc");
+        .attr("rx", 50)
+        .attr("ry", 50);
 
-      // image cropée sur le haut
-      g.append("image")
-        .attr("xlink:href", item.vignette)
-        .attr("x", -squareSize/2)
-        .attr("y", -squareSize/2)
+      const squareGroup = svg.append("g")
+        .attr("clip-path", "url(#clip-square-" + i + ")");
+
+      // IMAGE
+      squareGroup.append("image")
+        .attr("href", item.vignette)
+        .attr("x", x - squareSize/2)
+        .attr("y", y - squareSize/2)
         .attr("width", squareSize)
-        .attr("height", imageHeight)
+        .attr("height", squareSize)
         .attr("preserveAspectRatio","xMidYMid slice");
 
-      // titre sur moitié basse
-      g.append("rect")
-        .attr("x", -squareSize/2)
-        .attr("y", 0)
+      // ZONE GRISE TEXTE (moitié basse)
+      squareGroup.append("rect")
+        .attr("x", x - squareSize/2)
+        .attr("y", y)
         .attr("width", squareSize)
         .attr("height", squareSize/2)
-        .attr("fill", "#aaa");
+        .attr("fill", "rgba(0,0,0,0.55)");
 
-      addMultilineText(g, item.titre, 0, squareSize/8, squareSize, 14, "#fff", "12px");
+      // TEXTE TITRE
+      addMultilineText(
+        svg,
+        item.titre,
+        x,
+        y + squareSize/4,
+        squareSize,
+        16,
+        "white",
+        "14px"
+      );
 
-      // Position cercles matière/notion selon angle
-      let dxMat, dyMat, dxNot, dyNot;
-      if(angle >= -Math.PI/4 && angle < Math.PI/4) { // droite
-          dxMat = squareSize/2 + circleOffset + circleRadius; dyMat = -squareSize/2 - circleRadius; // haut droit
-          dxNot = squareSize/2 + circleOffset + circleRadius; dyNot = squareSize/2 + circleRadius; // bas droit
-      } else if(angle >= Math.PI/4 && angle < 3*Math.PI/4) { // bas
-          dxMat = -squareSize/2 - circleRadius; dyMat = squareSize/2 + circleOffset + circleRadius; // bas gauche
-          dxNot = squareSize/2 + circleRadius; dyNot = squareSize/2 + circleOffset + circleRadius; // bas droit
-      } else if(angle >= -3*Math.PI/4 && angle < -Math.PI/4) { // haut
-          dxMat = -squareSize/2 - circleRadius; dyMat = -squareSize/2 - circleOffset - circleRadius; // haut gauche
-          dxNot = squareSize/2 + circleRadius; dyNot = -squareSize/2 - circleOffset - circleRadius; // haut droit
-      } else { // gauche
-          dxMat = -squareSize/2 - circleOffset - circleRadius; dyMat = -squareSize/2 - circleRadius; // haut gauche
-          dxNot = -squareSize/2 - circleOffset - circleRadius; dyNot = squareSize/2 + circleRadius; // bas gauche
+      // === POSITION DES CERCLES MATIÈRE / NOTION ===
+      const offset = squareSize/2 + circleRadius;
+
+      let matX, matY, notX, notY;
+
+      if (Math.abs(Math.cos(angle)) < 0.3) {
+        // haut ou bas
+        if (Math.sin(angle) < 0) {
+          // haut
+          matX = x - circleRadius;
+          matY = y - offset;
+          notX = x + circleRadius;
+          notY = y - offset;
+        } else {
+          // bas
+          matX = x - circleRadius;
+          matY = y + offset;
+          notX = x + circleRadius;
+          notY = y + offset;
+        }
+      } else {
+        // gauche ou droite
+        if (Math.cos(angle) > 0) {
+          // droite
+          matX = x + offset;
+          matY = y - circleRadius;
+          notX = x + offset;
+          notY = y + circleRadius;
+        } else {
+          // gauche
+          matX = x - offset;
+          matY = y - circleRadius;
+          notX = x - offset;
+          notY = y + circleRadius;
+        }
       }
 
-      // cercle matière
-      svg.append("circle")
-        .attr("cx", x + dxMat)
-        .attr("cy", y + dyMat)
-        .attr("r", circleRadius)
-        .attr("fill", matColor);
-
-      addMultilineText(svg, item.matiere, x + dxMat, y + dyMat, circleRadius*2, 16, "#fff", "14px");
-
-      // cercle notion
-      svg.append("circle")
-        .attr("cx", x + dxNot)
-        .attr("cy", y + dyNot)
-        .attr("r", circleRadius)
-        .attr("fill", notionColor);
-
-      addMultilineText(svg, item.notion, x + dxNot, y + dyNot, circleRadius*2, 16, "#fff", "14px");
-
-      // traits fins reliant carré aux cercles
+      // LIGNES fines
       svg.append("line")
-        .attr("x1", x) .attr("y1", y)
-        .attr("x2", x + dxMat).attr("y2", y + dyMat)
-        .attr("stroke", "#999")
+        .attr("x1", x)
+        .attr("y1", y)
+        .attr("x2", matX)
+        .attr("y2", matY)
+        .attr("stroke", "#bbb")
         .attr("stroke-width", 1);
 
       svg.append("line")
-        .attr("x1", x) .attr("y1", y)
-        .attr("x2", x + dxNot).attr("y2", y + dyNot)
-        .attr("stroke", "#999")
+        .attr("x1", x)
+        .attr("y1", y)
+        .attr("x2", notX)
+        .attr("y2", notY)
+        .attr("stroke", "#bbb")
         .attr("stroke-width", 1);
+
+      // MATIÈRE (vert)
+      addCircleWithText(matX, matY, item.matiere, "#43a047");
+
+      // NOTION (orange)
+      addCircleWithText(notX, notY, item.notion, "#fb8c00");
 
     });
 
-  })
-  .catch(err => console.error(err));
+  });
+
+});
