@@ -8,8 +8,8 @@ const centerY = height / 2;
 const radius = 250;       // distance des carrés autour du centre
 const squareSize = 120;   // taille du carré
 const imageHeight = 60;   // hauteur de la vignette dans le carré
-const circleRadius = 20;  // rayon des cercles matière/notion
-const circleOffset = 50;  // distance des cercles liés au carré
+const circleRadius = 50;  // rayon des cercles matière/notion (même que SOURCE)
+const circleOffset = 10;  // espace entre carré et cercle
 
 // Tooltip
 const tooltip = d3.select("body")
@@ -25,11 +25,11 @@ fetch(sheetURL)
 
     const svg = d3.select("#graph");
 
-    // Nœud central SOURCE
+    // Cercle central SOURCE
     svg.append("circle")
       .attr("cx", centerX)
       .attr("cy", centerY)
-      .attr("r", 50)
+      .attr("r", circleRadius)
       .attr("fill", "#3498db");
 
     svg.append("text")
@@ -48,14 +48,14 @@ fetch(sheetURL)
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
 
-      // couleur matière
-      let matColor = "#2ecc71"; // vert par défaut
+      // couleurs
+      let matColor = "#2ecc71"; // vert pour matière
       let notionColor = "#f39c12"; // orange pour notion
       if(item.matiere.toLowerCase() === "svt") matColor = "#2ecc71";
       if(item.matiere.toLowerCase() === "français") matColor = "#e74c3c";
       if(item.matiere.toLowerCase() === "histoire") matColor = "#f1c40f";
 
-      // groupe complet pour le carré + titres + cercles
+      // groupe pour le carré + titre + image
       const g = svg.append("g")
         .attr("class","resource-group")
         .attr("transform", `translate(${x},${y})`)
@@ -109,53 +109,66 @@ fetch(sheetURL)
         .style("font-size","12px")
         .text(item.titre);
 
-      // calcul position cercles liés selon angle
-      const dx = Math.cos(angle) * circleOffset;
-      const dy = Math.sin(angle) * circleOffset;
+      // calcul position cercles matière/notion selon angle
+      let dxMat, dyMat, dxNot, dyNot;
+      if(angle >= -Math.PI/4 && angle < Math.PI/4) { // droite
+          dxMat = squareSize/2 + circleOffset + circleRadius; dyMat = -squareSize/2; // haut droit
+          dxNot = squareSize/2 + circleOffset + circleRadius; dyNot = squareSize/2; // bas droit
+      } else if(angle >= Math.PI/4 && angle < 3*Math.PI/4) { // bas
+          dxMat = -squareSize/2; dyMat = squareSize/2 + circleOffset + circleRadius; // bas gauche
+          dxNot = squareSize/2; dyNot = squareSize/2 + circleOffset + circleRadius; // bas droit
+      } else if(angle >= -3*Math.PI/4 && angle < -Math.PI/4) { // haut
+          dxMat = -squareSize/2; dyMat = -squareSize/2 - circleOffset - circleRadius; // haut gauche
+          dxNot = squareSize/2; dyNot = -squareSize/2 - circleOffset - circleRadius; // haut droit
+      } else { // gauche
+          dxMat = -squareSize/2 - circleOffset - circleRadius; dyMat = -squareSize/2; // haut gauche
+          dxNot = -squareSize/2 - circleOffset - circleRadius; dyNot = squareSize/2; // bas gauche
+      }
 
       // cercle matière
+      svg.append("circle")
+        .attr("cx", x + dxMat)
+        .attr("cy", y + dyMat)
+        .attr("r", circleRadius)
+        .attr("fill", matColor);
+
+      svg.append("text")
+        .attr("x", x + dxMat)
+        .attr("y", y + dyMat)
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .attr("fill","#fff")
+        .style("font-size","14px")
+        .text(item.matiere);
+
+      // cercle notion
+      svg.append("circle")
+        .attr("cx", x + dxNot)
+        .attr("cy", y + dyNot)
+        .attr("r", circleRadius)
+        .attr("fill", notionColor);
+
+      svg.append("text")
+        .attr("x", x + dxNot)
+        .attr("y", y + dyNot)
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .attr("fill","#fff")
+        .style("font-size","14px")
+        .text(item.notion);
+
+      // traits fins reliant carré aux cercles
       svg.append("line")
-        .attr("x1", x)
-        .attr("y1", y)
-        .attr("x2", x + dx)
-        .attr("y2", y + dy)
+        .attr("x1", x) .attr("y1", y)
+        .attr("x2", x + dxMat).attr("y2", y + dyMat)
         .attr("stroke", "#999")
         .attr("stroke-width", 1);
 
-      svg.append("circle")
-        .attr("cx", x + dx)
-        .attr("cy", y + dy)
-        .attr("r", circleRadius)
-        .attr("fill", matColor)
-        .on("mouseover", (event) => {
-          tooltip.transition().duration(200).style("opacity",0.9);
-          tooltip.html(`Matière: ${item.matiere}`)
-            .style("left",(event.pageX+10)+"px")
-            .style("top",(event.pageY-20)+"px");
-        })
-        .on("mouseout", () => tooltip.transition().duration(500).style("opacity",0));
-
-      // cercle notion secondaire
       svg.append("line")
-        .attr("x1", x)
-        .attr("y1", y)
-        .attr("x2", x - dx)
-        .attr("y2", y - dy)
+        .attr("x1", x) .attr("y1", y)
+        .attr("x2", x + dxNot).attr("y2", y + dyNot)
         .attr("stroke", "#999")
         .attr("stroke-width", 1);
-
-      svg.append("circle")
-        .attr("cx", x - dx)
-        .attr("cy", y - dy)
-        .attr("r", circleRadius)
-        .attr("fill", notionColor)
-        .on("mouseover", (event) => {
-          tooltip.transition().duration(200).style("opacity",0.9);
-          tooltip.html(`Notion: ${item.notion}`)
-            .style("left",(event.pageX+10)+"px")
-            .style("top",(event.pageY-20)+"px");
-        })
-        .on("mouseout", () => tooltip.transition().duration(500).style("opacity",0));
 
     });
 
