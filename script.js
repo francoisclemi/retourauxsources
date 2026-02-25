@@ -10,6 +10,7 @@ const svg = d3.select("#graph-container")
     .attr("height", "100%")
     .attr("viewBox", `0 0 ${width} ${height}`);
 
+// Configuration des IDs pour correspondre EXACTEMENT à la colonne E (Notion) de votre tableur
 const notionsConfig = [
     { id: "Définir le métier de journaliste", l1: "DÉFINIR LE MÉTIER", l2: "DE JOURNALISTE", url: "https://www.clemi.fr" },
     { id: "Comprendre la ligne éditoriale d’un média", l1: "COMPRENDRE LA LIGNE", l2: "ÉDITORIALE", url: "https://www.clemi.fr" },
@@ -21,10 +22,10 @@ const notionsConfig = [
 // 1. Calcul des points du pentagone
 const points = notionsConfig.map((d, i) => {
     const a = (i * 72 * Math.PI / 180) - (Math.PI / 2);
-    return { x: centerX + radiusSommet * Math.cos(a), y: centerY + radiusSommet * Math.sin(a), angle: a };
+    return { x: centerX + radiusSommet * Math.cos(a), y: centerY + radiusSommet * Math.sin(a) };
 });
 
-// 2. Dessin des bandeaux
+// 2. Dessin des bandeaux extérieurs
 points.forEach((p1, i) => {
     const p2 = points[(i + 1) % 5];
     const midX = (p1.x + p2.x) / 2;
@@ -50,47 +51,61 @@ points.forEach((p1, i) => {
 const centerGroup = svg.append("g")
     .attr("class", "node-center")
     .attr("transform", `translate(${centerX}, ${centerY})`)
-    .on("click", () => window.open("https://www.clemi.fr/...", "_blank"));
+    .on("click", () => window.open("https://www.clemi.fr/ressources/series-de-ressources-videos/les-cles-des-medias/quest-ce-quune-source", "_blank"));
 
 centerGroup.append("circle").attr("r", 70).attr("fill", "#28aae0").attr("stroke", "#fff").attr("stroke-width", 5);
 centerGroup.append("text").attr("class", "label-center").attr("dy", "-8px").style("font-size", "15px").style("font-weight", "900").text("LA SOURCE");
 centerGroup.append("text").attr("class", "label-center").attr("dy", "22px").style("font-size", "11px").text("ⓘ en savoir plus");
 
-// 4. RÉCUPÉRATION DES DONNÉES GOOGLE SHEET
+// 4. RÉCUPÉRATION DYNAMIQUE DES RESSOURCES (OpenSheet)
 const sheetUrl = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base";
 
 d3.json(sheetUrl).then(data => {
     notionsConfig.forEach((notion, i) => {
-        // On filtre les données pour cette notion et on prend la dernière (la plus récente)
+        // On récupère toutes les lignes qui correspondent à la notion, et on prend la dernière (.pop())
         const ressource = data.filter(d => d["Notion"] === notion.id).pop();
 
         if (ressource) {
-            // On calcule la position entre le centre et le milieu du segment du pentagone
+            // Cible : le milieu du segment bleu correspondant
             const p1 = points[i];
             const p2 = points[(i + 1) % 5];
-            const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2;
+            const targetX = (p1.x + p2.x) / 2;
+            const targetY = (p1.y + p2.y) / 2;
 
-            // Placement à 55% de la distance entre le centre et le bord
-            const posX = centerX + (midX - centerX) * 0.55;
-            const posY = centerY + (midY - centerY) * 0.55;
+            // On place la ressource à 50% du chemin entre le centre et le bord
+            const posX = centerX + (targetX - centerX) * 0.50;
+            const posY = centerY + (targetY - centerY) * 0.50;
 
             const resGroup = svg.append("g")
                 .attr("class", "resource-node")
                 .attr("transform", `translate(${posX}, ${posY})`)
                 .on("click", () => window.open(ressource["URL"], "_blank"));
 
+            // Dessin du petit cercle blanc à bord bleu
             resGroup.append("circle")
-                .attr("r", 45)
+                .attr("r", 40)
                 .attr("class", "resource-circle");
 
-            // Affichage du titre (tronqué si trop long)
-            const titre = ressource["Titre"].length > 15 ? ressource["Titre"].substring(0, 12) + "..." : ressource["Titre"];
+            // Ajout du titre de la ressource (coupé si trop long)
+            const fullTitle = ressource["Titre"].toUpperCase();
+            const words = fullTitle.split(" ");
             
+            // On affiche sur deux lignes si nécessaire
+            const mid = Math.ceil(words.length / 2);
+            const line1 = words.slice(0, mid).join(" ");
+            const line2 = words.slice(mid).join(" ");
+
             resGroup.append("text")
                 .attr("class", "label-resource")
-                .attr("dy", "5px")
-                .text(titre);
+                .attr("dy", line2 ? "-5px" : "5px")
+                .text(line1.length > 12 ? line1.substring(0, 10) + "..." : line1);
+
+            if (line2) {
+                resGroup.append("text")
+                    .attr("class", "label-resource")
+                    .attr("dy", "12px")
+                    .text(line2.length > 12 ? line2.substring(0, 10) + "..." : line2);
+            }
         }
     });
 });
