@@ -43,4 +43,30 @@ body {
     font-weight: bold;
     fill: #333;
     text-anchor: middle;
+
+    /* Style des bulles de ressources */
+.resource-node {
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.resource-node:hover {
+    transform: scale(1.1); /* La bulle grossit légèrement au survol */
+    filter: brightness(95%);
+}
+
+.resource-circle {
+    fill: #ffffff;
+    stroke: #28aae0;
+    stroke-width: 3;
+}
+
+.label-resource {
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    fill: #28aae0;
+    text-anchor: middle;
+    pointer-events: none;
+}
 }
