@@ -10,13 +10,13 @@ const svg = d3.select("#graph-container")
     .attr("height", "100%")
     .attr("viewBox", `0 0 ${width} ${height}`);
 
-// Les IDs doivent correspondre EXACTEMENT au texte de la colonne "Notion" du tableur
+// Configuration basée sur les ID (1 à 5)
 const notionsConfig = [
-    { id: "Définir le métier de journaliste", l1: "DÉFINIR LE MÉTIER", l2: "DE JOURNALISTE", url: "https://www.clemi.fr" },
-    { id: "Comprendre la ligne éditoriale d’un média", l1: "COMPRENDRE LA LIGNE", l2: "ÉDITORIALE", url: "https://www.clemi.fr" },
-    { id: "Distinguer information et opinion", l1: "DISTINGUER INFO", l2: "ET OPINION", url: "https://www.clemi.fr" },
-    { id: "Différencier info et publicité", l1: "DIFFÉRENCIER INFO", l2: "ET PUBLICITÉ", url: "https://www.clemi.fr" },
-    { id: "Identifier des fausses informations", l1: "IDENTIFIER DES", l2: "FAUSSES INFOS", url: "https://www.clemi.fr" }
+    { id: 1, l1: "DÉFINIR LE MÉTIER", l2: "DE JOURNALISTE", url: "https://www.clemi.fr" },
+    { id: 2, l1: "COMPRENDRE LA LIGNE", l2: "ÉDITORIALE", url: "https://www.clemi.fr" },
+    { id: 3, l1: "DISTINGUER INFO", l2: "ET OPINION", url: "https://www.clemi.fr" },
+    { id: 4, l1: "DIFFÉRENCIER INFO", l2: "ET PUBLICITÉ", url: "https://www.clemi.fr" },
+    { id: 5, l1: "IDENTIFIER DES", l2: "FAUSSES INFOS", url: "https://www.clemi.fr" }
 ];
 
 // 1. Calcul des points du pentagone
@@ -57,29 +57,28 @@ centerGroup.append("circle").attr("r", 70).attr("fill", "#28aae0").attr("stroke"
 centerGroup.append("text").attr("class", "label-center").attr("dy", "-8px").style("font-size", "15px").style("font-weight", "900").text("LA SOURCE");
 centerGroup.append("text").attr("class", "label-center").attr("dy", "22px").style("font-size", "11px").text("ⓘ en savoir plus");
 
-// 4. RÉCUPÉRATION DYNAMIQUE DES RESSOURCES
+// 4. RÉCUPÉRATION DYNAMIQUE VIA IDNOTION
 const sheetUrl = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base";
 
 d3.json(sheetUrl).then(data => {
-    console.log("Données reçues :", data); // Vérification dans la console
+    console.log("Données JSON reçues :", data);
 
     notionsConfig.forEach((notion, i) => {
-        // Filtrage des données (on s'assure que Notion existe bien dans le JSON)
-        const matches = data.filter(d => d.Notion && d.Notion.trim() === notion.id);
-        const ressource = matches.pop(); // On prend la dernière ligne
+        // Filtrage par l'ID numérique (on convertit en nombre pour être sûr)
+        const ressource = data.filter(d => parseInt(d.idnotion) === notion.id).pop();
 
         if (ressource) {
-            console.log("Ressource trouvée pour " + notion.id, ressource);
+            console.log(`Ressource trouvée pour l'ID ${notion.id}:`, ressource.Titre);
 
-            // Cible : milieu du segment
+            // Calcul de la position cible (milieu du segment bleu correspondant)
             const p1 = points[i];
             const p2 = points[(i + 1) % 5];
             const targetX = (p1.x + p2.x) / 2;
             const targetY = (p1.y + p2.y) / 2;
 
-            // Positionnement à 50% entre centre et bord
-            const posX = centerX + (targetX - centerX) * 0.50;
-            const posY = centerY + (targetY - centerY) * 0.50;
+            // Positionnement à 50% entre le centre et le bord
+            const posX = centerX + (targetX - centerX) * 0.52;
+            const posY = centerY + (targetY - centerY) * 0.52;
 
             const resGroup = svg.append("g")
                 .attr("class", "resource-node")
@@ -87,10 +86,10 @@ d3.json(sheetUrl).then(data => {
                 .on("click", () => window.open(ressource.URL, "_blank"));
 
             resGroup.append("circle")
-                .attr("r", 40)
+                .attr("r", 45) // Légèrement plus grand pour la lisibilité
                 .attr("class", "resource-circle");
 
-            // Gestion du titre sur deux lignes
+            // Formatage du titre
             const title = (ressource.Titre || "").toUpperCase();
             const words = title.split(" ");
             const mid = Math.ceil(words.length / 2);
@@ -105,15 +104,11 @@ d3.json(sheetUrl).then(data => {
             if (l2) {
                 resGroup.append("text")
                     .attr("class", "label-resource")
-                    .attr("dy", "10px")
+                    .attr("dy", "12px")
                     .text(l2.length > 15 ? l2.substring(0, 13) + "..." : l2);
             }
-        } else {
-            console.warn("Aucune ressource trouvée pour : " + notion.id);
         }
     });
-}).catch(error => {
-    console.error("Erreur lors du chargement des données :", error);
-});
+}).catch(err => console.error("Erreur de chargement :", err));
 
 window.addEventListener("resize", () => location.reload());
