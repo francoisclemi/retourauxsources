@@ -1,178 +1,98 @@
-// script.js
-const sheetURL = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base"; // ← remplace TON_ID_SHEET
-
-const width = 900;
-const height = 900;
+const width = window.innerWidth;
+const height = window.innerHeight;
 const centerX = width / 2;
 const centerY = height / 2;
-const radius = 180;         // distance des carrés autour du centre
-const squareSize = 120;     // taille des carrés ressources
-const imageHeight = 60;     // hauteur de la vignette
-const circleRadius = 50;    // taille des cercles matière/notion/SOURCE
-const circleOffset = 5;     // distance entre carré et cercles
+const radiusSommet = Math.min(width, height) * 0.35;
 
-// Tooltip
-const tooltip = d3.select("body")
-  .append("div")
-  .attr("class", "tooltip")
-  .style("opacity", 0);
+const svg = d3.select("#graph-container")
+    .append("svg")
+    .attr("width", "100%")
+    .attr("height", "100%")
+    .attr("viewBox", `0 0 ${width} ${height}`);
 
-// Fonction pour texte multi-lignes
-function addMultilineText(g, text, x, y, width, lineHeight, fill, fontSize) {
-  const words = text.split(" ");
-  let lines = [], line = "";
-  words.forEach((word) => {
-    if ((line + " " + word).length > width / 6) {
-      lines.push(line);
-      line = word;
-    } else {
-      line += (line ? " " : "") + word;
-    }
-  });
-  lines.push(line);
+const notionsConfig = [
+    { id: "Définir le métier de journaliste", l1: "DÉFINIR LE MÉTIER", l2: "DE JOURNALISTE", url: "https://www.clemi.fr" },
+    { id: "Comprendre la ligne éditoriale d’un média", l1: "COMPRENDRE LA LIGNE", l2: "ÉDITORIALE", url: "https://www.clemi.fr" },
+    { id: "Distinguer information et opinion", l1: "DISTINGUER INFO", l2: "ET OPINION", url: "https://www.clemi.fr" },
+    { id: "Différencier info et publicité", l1: "DIFFÉRENCIER INFO", l2: "ET PUBLICITÉ", url: "https://www.clemi.fr" },
+    { id: "Identifier des fausses informations", l1: "IDENTIFIER DES", l2: "FAUSSES INFOS", url: "https://www.clemi.fr" }
+];
 
-  lines.forEach((l,i) => {
-    g.append("text")
-      .attr("x", x)
-      .attr("y", y + i*lineHeight)
-      .attr("text-anchor","middle")
-      .attr("dy","0.35em")
-      .attr("fill", fill)
-      .style("font-size", fontSize)
-      .text(l);
-  });
-}
+// 1. Calcul des points du pentagone
+const points = notionsConfig.map((d, i) => {
+    const a = (i * 72 * Math.PI / 180) - (Math.PI / 2);
+    return { x: centerX + radiusSommet * Math.cos(a), y: centerY + radiusSommet * Math.sin(a), angle: a };
+});
 
-fetch(sheetURL)
-  .then(res => res.json())
-  .then(data => {
-    const sorted = data.sort((a,b) => new Date(b.date) - new Date(a.date));
-    const lastFive = sorted.slice(0,5);
+// 2. Dessin des bandeaux
+points.forEach((p1, i) => {
+    const p2 = points[(i + 1) % 5];
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    let angleDeg = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+    if (angleDeg > 90 || angleDeg < -90) angleDeg += 180;
 
-    const svg = d3.select("#graph");
+    svg.append("line")
+        .attr("x1", p1.x).attr("y1", p1.y)
+        .attr("x2", p2.x).attr("y2", p2.y)
+        .attr("stroke", "#28aae0")
+        .attr("stroke-width", 80)
+        .attr("stroke-linecap", "round")
+        .attr("class", "clickable-segment")
+        .on("click", () => window.open(notionsConfig[i].url, "_blank"));
 
-    // Cercle central SOURCE
-    svg.append("circle")
-      .attr("cx", centerX)
-      .attr("cy", centerY)
-      .attr("r", circleRadius)
-      .attr("fill", "#3498db");
+    const textGroup = svg.append("g").attr("transform", `translate(${midX}, ${midY}) rotate(${angleDeg})`);
+    textGroup.append("text").attr("class", "label-notion").attr("y", -14).text(notionsConfig[i].l1);
+    textGroup.append("text").attr("class", "label-notion").attr("y", 14).text(notionsConfig[i].l2);
+});
 
-    svg.append("text")
-      .attr("x", centerX)
-      .attr("y", centerY)
-      .attr("text-anchor", "middle")
-      .attr("dy", "0.35em")
-      .attr("fill", "#fff")
-      .style("font-size", "16px")
-      .text("SOURCE");
+// 3. Dessin du cercle central
+const centerGroup = svg.append("g")
+    .attr("class", "node-center")
+    .attr("transform", `translate(${centerX}, ${centerY})`)
+    .on("click", () => window.open("https://www.clemi.fr/...", "_blank"));
 
-    const angleStep = 2 * Math.PI / lastFive.length;
+centerGroup.append("circle").attr("r", 70).attr("fill", "#28aae0").attr("stroke", "#fff").attr("stroke-width", 5);
+centerGroup.append("text").attr("class", "label-center").attr("dy", "-8px").style("font-size", "15px").style("font-weight", "900").text("LA SOURCE");
+centerGroup.append("text").attr("class", "label-center").attr("dy", "22px").style("font-size", "11px").text("ⓘ en savoir plus");
 
-    lastFive.forEach((item,i) => {
-      const angle = i * angleStep - Math.PI/2;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
+// 4. RÉCUPÉRATION DES DONNÉES GOOGLE SHEET
+const sheetUrl = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base";
 
-      // couleurs fixes
-      const matColor = "#2ecc71"; // vert matière
-      const notionColor = "#f39c12"; // orange notion
+d3.json(sheetUrl).then(data => {
+    notionsConfig.forEach((notion, i) => {
+        // On filtre les données pour cette notion et on prend la dernière (la plus récente)
+        const ressource = data.filter(d => d["Notion"] === notion.id).pop();
 
-      // Groupe carré + image + titre
-      const g = svg.append("g")
-        .attr("class","resource-group")
-        .attr("transform", `translate(${x},${y})`)
-        .style("cursor","pointer")
-        .on("click", () => window.open(item.url,"_blank"))
-        .on("mouseover", (event) => {
-          tooltip.transition().duration(200).style("opacity", 0.9);
-          tooltip.html(`
-            <strong>${item.titre}</strong><br>
-            Matière: ${item.matiere}<br>
-            Notion: ${item.notion}
-          `)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 20) + "px");
-        })
-        .on("mouseout", () => tooltip.transition().duration(500).style("opacity", 0));
+        if (ressource) {
+            // On calcule la position entre le centre et le milieu du segment du pentagone
+            const p1 = points[i];
+            const p2 = points[(i + 1) % 5];
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2;
 
-      // carré très arrondi
-      g.append("rect")
-        .attr("x", -squareSize/2)
-        .attr("y", -squareSize/2)
-        .attr("width", squareSize)
-        .attr("height", squareSize)
-        .attr("rx", squareSize/2) // coins très arrondis
-        .attr("ry", squareSize/2)
-        .attr("fill", "#ccc");
+            // Placement à 55% de la distance entre le centre et le bord
+            const posX = centerX + (midX - centerX) * 0.55;
+            const posY = centerY + (midY - centerY) * 0.55;
 
-      // image cropée sur le haut
-      g.append("image")
-        .attr("xlink:href", item.vignette)
-        .attr("x", -squareSize/2)
-        .attr("y", -squareSize/2)
-        .attr("width", squareSize)
-        .attr("height", imageHeight)
-        .attr("preserveAspectRatio","xMidYMid slice");
+            const resGroup = svg.append("g")
+                .attr("class", "resource-node")
+                .attr("transform", `translate(${posX}, ${posY})`)
+                .on("click", () => window.open(ressource["URL"], "_blank"));
 
-      // titre sur moitié basse
-      g.append("rect")
-        .attr("x", -squareSize/2)
-        .attr("y", 0)
-        .attr("width", squareSize)
-        .attr("height", squareSize/2)
-        .attr("fill", "#aaa");
+            resGroup.append("circle")
+                .attr("r", 45)
+                .attr("class", "resource-circle");
 
-      addMultilineText(g, item.titre, 0, squareSize/8, squareSize, 14, "#fff", "12px");
-
-      // Position cercles matière/notion selon angle
-      let dxMat, dyMat, dxNot, dyNot;
-      if(angle >= -Math.PI/4 && angle < Math.PI/4) { // droite
-          dxMat = squareSize/2 + circleOffset + circleRadius; dyMat = -squareSize/2 - circleRadius; // haut droit
-          dxNot = squareSize/2 + circleOffset + circleRadius; dyNot = squareSize/2 + circleRadius; // bas droit
-      } else if(angle >= Math.PI/4 && angle < 3*Math.PI/4) { // bas
-          dxMat = -squareSize/2 - circleRadius; dyMat = squareSize/2 + circleOffset + circleRadius; // bas gauche
-          dxNot = squareSize/2 + circleRadius; dyNot = squareSize/2 + circleOffset + circleRadius; // bas droit
-      } else if(angle >= -3*Math.PI/4 && angle < -Math.PI/4) { // haut
-          dxMat = -squareSize/2 - circleRadius; dyMat = -squareSize/2 - circleOffset - circleRadius; // haut gauche
-          dxNot = squareSize/2 + circleRadius; dyNot = -squareSize/2 - circleOffset - circleRadius; // haut droit
-      } else { // gauche
-          dxMat = -squareSize/2 - circleOffset - circleRadius; dyMat = -squareSize/2 - circleRadius; // haut gauche
-          dxNot = -squareSize/2 - circleOffset - circleRadius; dyNot = squareSize/2 + circleRadius; // bas gauche
-      }
-
-      // cercle matière
-      svg.append("circle")
-        .attr("cx", x + dxMat)
-        .attr("cy", y + dyMat)
-        .attr("r", circleRadius)
-        .attr("fill", matColor);
-
-      addMultilineText(svg, item.matiere, x + dxMat, y + dyMat, circleRadius*2, 16, "#fff", "14px");
-
-      // cercle notion
-      svg.append("circle")
-        .attr("cx", x + dxNot)
-        .attr("cy", y + dyNot)
-        .attr("r", circleRadius)
-        .attr("fill", notionColor);
-
-      addMultilineText(svg, item.notion, x + dxNot, y + dyNot, circleRadius*2, 16, "#fff", "14px");
-
-      // traits fins reliant carré aux cercles
-      svg.append("line")
-        .attr("x1", x) .attr("y1", y)
-        .attr("x2", x + dxMat).attr("y2", y + dyMat)
-        .attr("stroke", "#999")
-        .attr("stroke-width", 1);
-
-      svg.append("line")
-        .attr("x1", x) .attr("y1", y)
-        .attr("x2", x + dxNot).attr("y2", y + dyNot)
-        .attr("stroke", "#999")
-        .attr("stroke-width", 1);
-
+            // Affichage du titre (tronqué si trop long)
+            const titre = ressource["Titre"].length > 15 ? ressource["Titre"].substring(0, 12) + "..." : ressource["Titre"];
+            
+            resGroup.append("text")
+                .attr("class", "label-resource")
+                .attr("dy", "5px")
+                .text(titre);
+        }
     });
+});
 
-  })
-  .catch(err => console.error(err));
+window.addEventListener("resize", () => location.reload());
