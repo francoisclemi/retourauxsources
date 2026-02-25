@@ -10,7 +10,7 @@ const svg = d3.select("#graph-container")
     .attr("height", "100%")
     .attr("viewBox", `0 0 ${width} ${height}`);
 
-// Configuration des IDs pour correspondre EXACTEMENT à la colonne E (Notion) de votre tableur
+// Les IDs doivent correspondre EXACTEMENT au texte de la colonne "Notion" du tableur
 const notionsConfig = [
     { id: "Définir le métier de journaliste", l1: "DÉFINIR LE MÉTIER", l2: "DE JOURNALISTE", url: "https://www.clemi.fr" },
     { id: "Comprendre la ligne éditoriale d’un média", l1: "COMPRENDRE LA LIGNE", l2: "ÉDITORIALE", url: "https://www.clemi.fr" },
@@ -57,57 +57,63 @@ centerGroup.append("circle").attr("r", 70).attr("fill", "#28aae0").attr("stroke"
 centerGroup.append("text").attr("class", "label-center").attr("dy", "-8px").style("font-size", "15px").style("font-weight", "900").text("LA SOURCE");
 centerGroup.append("text").attr("class", "label-center").attr("dy", "22px").style("font-size", "11px").text("ⓘ en savoir plus");
 
-// 4. RÉCUPÉRATION DYNAMIQUE DES RESSOURCES (OpenSheet)
+// 4. RÉCUPÉRATION DYNAMIQUE DES RESSOURCES
 const sheetUrl = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base";
 
 d3.json(sheetUrl).then(data => {
+    console.log("Données reçues :", data); // Vérification dans la console
+
     notionsConfig.forEach((notion, i) => {
-        // On récupère toutes les lignes qui correspondent à la notion, et on prend la dernière (.pop())
-        const ressource = data.filter(d => d["Notion"] === notion.id).pop();
+        // Filtrage des données (on s'assure que Notion existe bien dans le JSON)
+        const matches = data.filter(d => d.Notion && d.Notion.trim() === notion.id);
+        const ressource = matches.pop(); // On prend la dernière ligne
 
         if (ressource) {
-            // Cible : le milieu du segment bleu correspondant
+            console.log("Ressource trouvée pour " + notion.id, ressource);
+
+            // Cible : milieu du segment
             const p1 = points[i];
             const p2 = points[(i + 1) % 5];
             const targetX = (p1.x + p2.x) / 2;
             const targetY = (p1.y + p2.y) / 2;
 
-            // On place la ressource à 50% du chemin entre le centre et le bord
+            // Positionnement à 50% entre centre et bord
             const posX = centerX + (targetX - centerX) * 0.50;
             const posY = centerY + (targetY - centerY) * 0.50;
 
             const resGroup = svg.append("g")
                 .attr("class", "resource-node")
                 .attr("transform", `translate(${posX}, ${posY})`)
-                .on("click", () => window.open(ressource["URL"], "_blank"));
+                .on("click", () => window.open(ressource.URL, "_blank"));
 
-            // Dessin du petit cercle blanc à bord bleu
             resGroup.append("circle")
                 .attr("r", 40)
                 .attr("class", "resource-circle");
 
-            // Ajout du titre de la ressource (coupé si trop long)
-            const fullTitle = ressource["Titre"].toUpperCase();
-            const words = fullTitle.split(" ");
-            
-            // On affiche sur deux lignes si nécessaire
+            // Gestion du titre sur deux lignes
+            const title = (ressource.Titre || "").toUpperCase();
+            const words = title.split(" ");
             const mid = Math.ceil(words.length / 2);
-            const line1 = words.slice(0, mid).join(" ");
-            const line2 = words.slice(mid).join(" ");
+            const l1 = words.slice(0, mid).join(" ");
+            const l2 = words.slice(mid).join(" ");
 
             resGroup.append("text")
                 .attr("class", "label-resource")
-                .attr("dy", line2 ? "-5px" : "5px")
-                .text(line1.length > 12 ? line1.substring(0, 10) + "..." : line1);
+                .attr("dy", l2 ? "-4px" : "4px")
+                .text(l1.length > 15 ? l1.substring(0, 13) + "..." : l1);
 
-            if (line2) {
+            if (l2) {
                 resGroup.append("text")
                     .attr("class", "label-resource")
-                    .attr("dy", "12px")
-                    .text(line2.length > 12 ? line2.substring(0, 10) + "..." : line2);
+                    .attr("dy", "10px")
+                    .text(l2.length > 15 ? l2.substring(0, 13) + "..." : l2);
             }
+        } else {
+            console.warn("Aucune ressource trouvée pour : " + notion.id);
         }
     });
+}).catch(error => {
+    console.error("Erreur lors du chargement des données :", error);
 });
 
 window.addEventListener("resize", () => location.reload());
