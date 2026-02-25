@@ -10,7 +10,6 @@ const svg = d3.select("#graph-container")
     .attr("height", "100%")
     .attr("viewBox", `0 0 ${width} ${height}`);
 
-// Configuration basée sur les ID (1 à 5)
 const notionsConfig = [
     { id: 1, l1: "DÉFINIR LE MÉTIER", l2: "DE JOURNALISTE", url: "https://www.clemi.fr" },
     { id: 2, l1: "COMPRENDRE LA LIGNE", l2: "ÉDITORIALE", url: "https://www.clemi.fr" },
@@ -25,7 +24,7 @@ const points = notionsConfig.map((d, i) => {
     return { x: centerX + radiusSommet * Math.cos(a), y: centerY + radiusSommet * Math.sin(a) };
 });
 
-// 2. Dessin des bandeaux extérieurs
+// 2. Dessin des bandeaux extérieurs (Notions)
 points.forEach((p1, i) => {
     const p2 = points[(i + 1) % 5];
     const midX = (p1.x + p2.x) / 2;
@@ -57,58 +56,58 @@ centerGroup.append("circle").attr("r", 70).attr("fill", "#28aae0").attr("stroke"
 centerGroup.append("text").attr("class", "label-center").attr("dy", "-8px").style("font-size", "15px").style("font-weight", "900").text("LA SOURCE");
 centerGroup.append("text").attr("class", "label-center").attr("dy", "22px").style("font-size", "11px").text("ⓘ en savoir plus");
 
-// 4. RÉCUPÉRATION DYNAMIQUE VIA IDNOTION
+// 4. RÉCUPÉRATION ET AFFICHAGE DES RESSOURCES
 const sheetUrl = "https://opensheet.elk.sh/1hRfbDCfyk5TuNR9oSvilwKK2ohTbLgRkzvwq5BoHRpw/base";
 
 d3.json(sheetUrl).then(data => {
-    console.log("Données JSON reçues :", data);
-
     notionsConfig.forEach((notion, i) => {
-        // Filtrage par l'ID numérique (on convertit en nombre pour être sûr)
+        // On récupère la ressource avec l'idnotion correspondant
         const ressource = data.filter(d => parseInt(d.idnotion) === notion.id).pop();
 
         if (ressource) {
-            console.log(`Ressource trouvée pour l'ID ${notion.id}:`, ressource.Titre);
+            // Sécurité : trouver les clés indépendamment des majuscules (Titre/titre, URL/url)
+            const cleTitre = Object.keys(ressource).find(key => key.toLowerCase() === "titre");
+            const cleUrl = Object.keys(ressource).find(key => key.toLowerCase() === "url");
+            
+            const texteTitre = ressource[cleTitre] || "";
+            const lienUrl = ressource[cleUrl] || "#";
 
-            // Calcul de la position cible (milieu du segment bleu correspondant)
             const p1 = points[i];
             const p2 = points[(i + 1) % 5];
             const targetX = (p1.x + p2.x) / 2;
             const targetY = (p1.y + p2.y) / 2;
 
-            // Positionnement à 50% entre le centre et le bord
             const posX = centerX + (targetX - centerX) * 0.52;
             const posY = centerY + (targetY - centerY) * 0.52;
 
             const resGroup = svg.append("g")
                 .attr("class", "resource-node")
                 .attr("transform", `translate(${posX}, ${posY})`)
-                .on("click", () => window.open(ressource.URL, "_blank"));
+                .on("click", () => window.open(lienUrl, "_blank"));
 
             resGroup.append("circle")
-                .attr("r", 45) // Légèrement plus grand pour la lisibilité
+                .attr("r", 45)
                 .attr("class", "resource-circle");
 
-            // Formatage du titre
-            const title = (ressource.Titre || "").toUpperCase();
-            const words = title.split(" ");
+            // Découpage du titre en deux lignes pour tenir dans le cercle
+            const words = texteTitre.toUpperCase().split(" ");
             const mid = Math.ceil(words.length / 2);
-            const l1 = words.slice(0, mid).join(" ");
-            const l2 = words.slice(mid).join(" ");
+            const line1 = words.slice(0, mid).join(" ");
+            const line2 = words.slice(mid).join(" ");
 
             resGroup.append("text")
                 .attr("class", "label-resource")
-                .attr("dy", l2 ? "-4px" : "4px")
-                .text(l1.length > 15 ? l1.substring(0, 13) + "..." : l1);
+                .attr("dy", line2 ? "-5px" : "5px")
+                .text(line1.length > 15 ? line1.substring(0, 12) + "..." : line1);
 
-            if (l2) {
+            if (line2) {
                 resGroup.append("text")
                     .attr("class", "label-resource")
                     .attr("dy", "12px")
-                    .text(l2.length > 15 ? l2.substring(0, 13) + "..." : l2);
+                    .text(line2.length > 15 ? line2.substring(0, 12) + "..." : line2);
             }
         }
     });
-}).catch(err => console.error("Erreur de chargement :", err));
+});
 
 window.addEventListener("resize", () => location.reload());
